@@ -1,330 +1,310 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Portal de Reportes | Shipyard</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Monitoreo de Maniobras | CITITUG</title>
+
+<!-- Leaflet (mapa) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
+  /* ========= PALETA CITITUG ========= */
   :root{
     --azul-osc:#0A2A4A; --azul:#0F3A6B; --azul-claro:#1E5AA8;
-    --naranja:#FF8C00; --gris:#f4f7fb; --borde:#e7eef7;
-    --glass:rgba(255,255,255,.72); --shadow:0 10px 30px rgba(7,26,46,.15);
+    --naranja:#FF8C00; --gris:#F4F7FB; --borde:#e7eef7;
+    --glass:rgba(255,255,255,.85); --shadow:0 10px 30px rgba(7,26,46,.12);
     --radius:18px;
-
-    --viewer-h:84svh;   /* altura visible del iframe */
-    --shield-h:160px;   /* alto del escudo que tapa la barra inferior */
   }
 
-  @media (min-width:900px){
-    :root{ --viewer-h:80vh; --shield-h:140px; }
-  }
-  @media (max-width:620px){
-    :root{ --viewer-h:82svh; --shield-h:180px; }
-  }
-
-  *{box-sizing:border-box;margin:0;padding:0}
+  /* ========= RESETEOS BÁSICOS ========= */
+  *{box-sizing:border-box}
+  html,body{height:100%}
   body{
-    font-family:"Segoe UI",system-ui,Roboto,Arial;
-    background:var(--gris);
-    color:#16324b;
-    overflow-x:hidden;
-    -webkit-text-size-adjust:100%;
-  }
-  img{max-width:100%;display:block}
-
-  /* Header */
-  .hero{
-    background:linear-gradient(135deg,var(--azul-osc) 0%,var(--azul) 60%,var(--azul-claro) 100%);
-    color:#fff;
-    padding:clamp(14px,2.5vw,22px) clamp(12px,2vw,18px) clamp(64px,8vw,90px);
-    box-shadow:var(--shadow);
-  }
-  .hero .wrap{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:clamp(8px,1.4vw,14px)}
-  .brand{display:flex;align-items:center;gap:clamp(8px,1.2vw,14px);font-weight:800}
-  .brand img{height:clamp(28px,4vw,38px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
-  .brand .title{font-size:clamp(1rem,2.4vw,1.35rem)}
-
-  /* Layout */
-  .container{max-width:1200px;margin:-48px auto 24px;padding:0 clamp(12px,3.5vw,16px)}
-  .login,.panel{
-    background:var(--glass);backdrop-filter:blur(8px);
-    border:1px solid var(--borde);border-radius:var(--radius);box-shadow:var(--shadow);
+    margin:0; background:var(--gris); color:#10212b; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   }
 
-  /* Login */
-  .login{padding:clamp(16px,2.8vw,24px);max-width:min(560px,92%)}
-  .login h3{text-align:center;margin-bottom:12px}
-  .row{display:flex;gap:clamp(8px,2vw,12px);flex-wrap:wrap;justify-content:center}
-  .row input{
-    padding:clamp(10px,2.4vw,12px);
-    border:1px solid var(--borde);border-radius:12px;min-width:220px;flex:1;
+  /* ========= HEADER ========= */
+  .app-header{
+    height:64px; background:linear-gradient(90deg,var(--azul-osc),var(--azul));
+    color:#fff; display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; box-shadow:var(--shadow); position:sticky; top:0; z-index:5;
   }
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand .logo{
+    width:36px; height:36px; border-radius:10px; background:var(--naranja);
+    display:grid; place-items:center; font-weight:800; color:#0A2A4A;
+  }
+  .brand h1{font-size:16px; line-height:1.1; margin:0}
+  .actions{display:flex; align-items:center; gap:8px}
   .btn{
-    background:var(--naranja);color:#fff;border:none;border-radius:12px;
-    padding:clamp(10px,2.4vw,12px) clamp(14px,3vw,18px);
-    font-weight:800;cursor:pointer;box-shadow:0 6px 14px rgba(255,140,0,.24)
+    background:#ffffff20; border:1px solid #ffffff33; color:#fff;
+    padding:8px 12px; border-radius:12px; cursor:pointer;
   }
-  .btn:hover{filter:brightness(1.05)}
-  .btn-sec{
-    background:#f2f6fc;border:1px solid var(--borde);color:#204261;border-radius:10px;
-    padding:8px 12px;cursor:pointer;font-weight:600
-  }
-  .error{color:#c0392b;margin-top:8px;text-align:center}
-  .badge{display:inline-block;background:#eaf3ff;border:1px solid #d7e7ff;color:#1f4e89;
-         padding:6px 10px;border-radius:999px;font-size:.9rem}
+  .btn:hover{background:#ffffff30}
 
-  /* Cards */
-  .topbar{
-    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
-    gap:10px;margin-bottom:16px;position:sticky;top:0;z-index:5;
-    background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border-radius:12px;padding:8px;
+  /* ========= LAYOUT PRINCIPAL ========= */
+  .layout{
+    display:grid; grid-template-columns:320px 1fr; gap:16px;
+    padding:16px; height:calc(100dvh - 64px);
   }
-  .grid{display:grid;gap:clamp(12px,2.4vw,18px);grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr; grid-template-rows:420px 1fr; height:auto}
+  }
+
+  /* ========= SIDEBAR ========= */
+  .sidebar{
+    background:#fff; border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:12px; display:flex; flex-direction:column; min-height:0;
+  }
+  .sidebar .tools{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+  .sidebar .tools input{
+    flex:1 1 100%; padding:10px 12px; border:1px solid var(--borde); border-radius:12px;
+  }
+  .chip{
+    padding:6px 10px; border:1px solid var(--borde); border-radius:999px; background:#fff; cursor:pointer;
+    font-size:12px;
+  }
+  .chip.active{border-color:var(--azul-claro); color:var(--azul-claro); background:#f0f6ff}
+
+  .cards{overflow:auto; padding-right:4px}
   .card{
-    background:var(--glass);border:1px solid var(--borde);border-radius:var(--radius);
-    text-align:center;padding:clamp(14px,3vw,18px);box-shadow:var(--shadow);
-    transition:transform .18s ease,box-shadow .18s ease;
+    background:var(--gris); border-radius:16px; padding:12px; margin:10px 2px;
+    border:1px solid var(--borde); box-shadow:0 2px 10px rgba(0,0,0,.03);
+    display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center;
+    transition:transform .08s ease;
   }
-  .card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(7,26,46,.18)}
-  .logo-cli{height:clamp(42px,7vw,58px);margin:6px auto 2px;object-fit:contain}
-  .card h3{margin:4px 0 8px;color:#002b5c}
-  
-  /* Viewer */
-  .panel{overflow:hidden}
-  .viewer{
-    position:relative;
-    overflow:hidden;
-    height:var(--viewer-h);
-    border-top:1px solid var(--borde);
+  .card:hover{transform:translateY(-1px)}
+  .title{font-weight:700}
+  .coords{font-size:12px; color:#3d5566}
+  .right{display:flex; align-items:center; gap:6px}
+  .badge{
+    font-size:11px; padding:4px 8px; border-radius:999px; font-weight:600;
   }
-  .viewer iframe{
-    position:absolute;
-    left:0; top:0;
-    width:100%;
-    height:var(--viewer-h);
-    border:0;
-  }
+  .b-green{background:#e9f7ef; color:#2e7d32}
+  .b-yellow{background:#fff8e1; color:#8d6e00}
+  .b-red{background:#ffebee; color:#c62828}
+  .go-btn{border:none; background:var(--azul-claro); color:#fff; padding:6px 8px; border-radius:10px; cursor:pointer}
+  .go-btn:hover{filter:brightness(1.05)}
 
-  /* Loader overlay */
-  .loader{
-    position:absolute; inset:0;
-    background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.95));
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:14px; z-index:2; transition:opacity .25s ease;
+  /* ========= MAPA ========= */
+  .map-wrap{
+    position:relative; border-radius:var(--radius); overflow:hidden;
+    box-shadow:var(--shadow); background:#cfe8ff; min-height:400px;
   }
-  .loader.hide{opacity:0; pointer-events:none}
-  .spinner{
-    width:42px; height:42px; border-radius:50%;
-    border:4px solid #dfe9f7; border-top-color:var(--azul-claro);
-    animation:spin 1s linear infinite;
+  #map{height:100%; width:100%}
+  .map-topbar{
+    position:absolute; top:12px; left:12px; right:12px; z-index:1000;
+    display:flex; justify-content:space-between; gap:8px;
   }
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .loader p{font-weight:700; color:#1f3b5c}
-
-  /* Escudo inferior que tapa y bloquea el paginador */
-  .viewer .shield{
-    position:absolute; left:0; right:0; bottom:0;
-    height:var(--shield-h);
-    background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 60%);
-    pointer-events:auto;
+  .glass{
+    background:var(--glass); backdrop-filter:blur(8px);
+    border:1px solid #ffffff80; border-radius:14px; padding:8px 10px; display:flex; gap:8px; align-items:center;
   }
-  .viewer::after{
-    content:"";
-    position:absolute; left:0; right:0; bottom:-1px; height:18px;
-    background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.9) 60%, #fff);
-    pointer-events:none;
-  }
-
-  .hidden{display:none}
-  footer{text-align:center;font-size:.85rem;opacity:.7;padding:22px 16px}
-
-  @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
-  @media (max-width:620px){
-    .grid{grid-template-columns:1fr}
-    .btn,.btn-sec{width:100%}
-    .row input{min-width:unset}
+  .legend-dot{width:10px; height:10px; border-radius:50%}
+  .g{background:#2e7d32}.y{background:#fbc02d}.r{background:#c62828}
+  .footer{
+    padding:8px 16px; color:#476278; font-size:12px; display:flex; justify-content:space-between;
   }
 </style>
 </head>
 <body>
 
-  <!-- Header -->
-  <section class="hero">
-    <div class="wrap brand">
-      <img src="https://citikold.com/wp-content/uploads/2025/03/Grupo-893.svg" alt="Shipyard Logo">
-      <span class="title">Portal de Reportes | Shipyard</span>
+<header class="app-header">
+  <div class="brand">
+    <div class="logo">⛴</div>
+    <div>
+      <h1>Monitoreo de Maniobras · CITITUG</h1>
+      <div style="opacity:.8;font-size:12px">Esmeraldas · Vista en tiempo (casi) real</div>
     </div>
-  </section>
+  </div>
+  <div class="actions">
+    <button class="btn" id="refreshBtn">Refrescar ubicaciones</button>
+    <div id="clock" aria-label="Reloj"></div>
+  </div>
+</header>
 
-  <!-- Login -->
-  <section id="loginBox" class="login container">
-    <h3>Acceso</h3>
-    <div class="row">
-      <input id="user" type="text" placeholder="Usuario (admin / agripac / biomar / vitapro / haid / cargill)" />
-      <input id="pass" type="password" placeholder="Clave" />
-      <button class="btn" id="btnLogin">Ingresar</button>
+<main class="layout">
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <div class="tools">
+      <input id="searchBox" placeholder="Buscar remolcador..." />
+      <button class="chip active" data-filter="ALL">Todos</button>
+      <button class="chip" data-filter="MANIOBRA">En maniobra</button>
+      <button class="chip" data-filter="TRANSITO">En tránsito</button>
+      <button class="chip" data-filter="MANTO">Mantenimiento</button>
     </div>
-    <div id="msg" class="error"></div>
-    <div style="text-align:center;margin-top:10px">
-      <span class="badge">Admin ve todos los clientes · Cada cliente ve solo su reporte</span>
-    </div>
-  </section>
+    <div class="cards" id="cards"></div>
+  </aside>
 
-  <!-- Home -->
-  <section id="home" class="container hidden">
-    <div class="topbar">
-      <span class="badge" id="who"></span>
-      <button class="btn-sec" id="btnLogout">Cerrar sesión</button>
-    </div>
-    <div id="cards" class="grid"></div>
-  </section>
-
-  <!-- Viewer -->
-  <section id="panelReporte" class="container hidden">
-    <div class="topbar">
-      <span class="badge" id="crumbCliente">Cliente</span>
-      <div class="row" style="gap:8px">
-        <button class="btn-sec" id="btnBack">← Regresar</button>
-        <button class="btn-sec" id="btnLogout2">Cerrar sesión</button>
+  <!-- ========== MAPA ========== -->
+  <section class="map-wrap">
+    <div class="map-topbar">
+      <div class="glass">
+        <strong>Estado:</strong>
+        <div class="legend-dot g" title="En maniobra"></div> <span style="font-size:12px">Maniobra</span>
+        <div class="legend-dot y" title="En tránsito" style="margin-left:8px"></div> <span style="font-size:12px">Tránsito</span>
+        <div class="legend-dot r" title="Mantenimiento" style="margin-left:8px"></div> <span style="font-size:12px">Mantenimiento</span>
       </div>
+      <div class="glass">Última actualización: <span id="lastUpdate">—</span></div>
     </div>
-    <div class="panel">
-      <div class="viewer">
-        <iframe id="visor" title="Reporte Shipyard" allowfullscreen></iframe>
-        <!-- Loader overlay -->
-        <div id="loader" class="loader" aria-live="polite" aria-busy="true">
-          <div class="spinner" aria-hidden="true"></div>
-          <p>Cargando reporte…</p>
-        </div>
-        <!-- Escudo inferior -->
-        <div class="shield" aria-hidden="true"></div>
-      </div>
-    </div>
+    <div id="map"></div>
   </section>
+</main>
 
-  <footer>© Shipyard — Portal de Reportes. Control de acceso.</footer>
+<div class="footer">
+  <div>Fuente: SUINBA / AIS (demo)</div>
+  <div>© CITITUG · PORTWISE</div>
+</div>
 
 <script>
-/* ========= ACCESOS ========= */
-const ACCOUNTS = {
-  admin:{role:"admin",pass:"ShipAdmin2025!"},
-  agripac:{role:"cliente",cliente:"AGRIPAC",pass:"Agri2025"},
-  biomar:{role:"cliente",cliente:"BIOMAR",pass:"Bio2025!"},
-  vitapro:{role:"cliente",cliente:"VITAPRO",pass:"Vita2025!"},
-  haid:{role:"cliente",cliente:"HAID",pass:"Haid2025!"},
-  cargill:{role:"cliente",cliente:"CARGILL",pass:"Carg2025!"}
-};
+  // ================== DEMO DATA (puedes conectar API luego) ==================
+  const vessels = [
+    {
+      id:"ESP1", name:"ESPERANZA I", lat:1.01889, lng:-79.67445,
+      status:"MANIOBRA", speed:6.3, destino:"Boya 8A"
+    },
+    {
+      id:"STF", name:"SANTA FE", lat:0.99139, lng:-79.65056,
+      status:"TRANSITO", speed:9.1, destino:"Muellaje Sur"
+    },
+    {
+      id:"ASD", name:"ASDMATER", lat:0.99028, lng:-79.64972,
+      status:"MANTO", speed:0, destino:"Astillero"
+    },
+    {
+      id:"ENX", name:"ENRIQUE XAVIER", lat:0.9678, lng:-79.6650,
+      status:"MANIOBRA", speed:4.8, destino:"Boya 8B"
+    },
+  ];
 
-/* ========= CLIENTES ========= */
-const BASE_R = "eyJrIjoiMzZhNmUwOGEtNjlkMi00OTBmLTk0ODYtNDI4OTQ5Mzk5NmFmIiwidCI6IjI1MGY3NmU3LTYxMDUtNDJlMy04MmQwLWJlN2M0NjBhZWE1OSIsImMiOjR9";
-const CLIENTES = [
-  {
-    nombre:"AGRIPAC",
-    logo:"https://yt3.googleusercontent.com/ytc/AIdro_k1f-dWXIHdp3F1bdshgT7u2jjF0DNjpBpDGebTmEy4GA=s900-c-k-c0x00ffffff-no-rj",
-    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=6a7b52b70b0a6993e626&navContentPaneEnabled=false&filterPaneEnabled=false`
-  },
-  {
-    nombre:"BIOMAR",
-    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFHVBJaofNxu0LmMd72BsW5xvyU8_yt6rVwg&s",
-    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=ReportSection485e79397267b5a2bde9&navContentPaneEnabled=false&filterPaneEnabled=false`
-  },
-  {
-    nombre:"VITAPRO",
-    logo:"https://vitapro.com.pe/wp-content/uploads/2020/08/vitapro-logo-2014.jpg",
-    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=9a780e54b50937e01420&navContentPaneEnabled=false&filterPaneEnabled=false`
-  },
-  {
-    nombre:"HAID",
-    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQt6hZ99pUe2HFaIcMJ_TENDO4sfpMLZyyd6Q&s",
-    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=d092dfce4cd74216d03b&navContentPaneEnabled=false&filterPaneEnabled=false`
-  },
-  {
-    nombre:"CARGILL",
-    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThwcnOgCuwcAwNB7jeuuTxfYxUcqtQcyk76A&s",
-    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=1e58c2b7ec6d82100170&navContentPaneEnabled=false&filterPaneEnabled=false`
-  },
-];
+  // Icons según estado
+  function circle(color){
+    return L.divIcon({
+      html:`<div style="width:14px;height:14px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,
+      className:"", iconSize:[14,14]
+    });
+  }
+  const iconByStatus = {
+    MANIOBRA: circle('#2e7d32'), // verde
+    TRANSITO: circle('#fbc02d'),  // amarillo
+    MANTO:    circle('#c62828')   // rojo
+  };
 
-/* ========= LÓGICA ========= */
-const Q=id=>document.getElementById(id);
-const loginBox=Q('loginBox'),home=Q('home'),panel=Q('panelReporte');
-const cards=Q('cards'),visor=Q('visor'),who=Q('who'),crumb=Q('crumbCliente');
-const loader=Q('loader');
-let session=null, loadTimer=null;
-const LOAD_TIMEOUT_MS = 15000; // respaldo: oculta loader a los 15s
+  // ================== MAPA ==================
+  const map = L.map('map',{zoomControl:true}).setView([0.99,-79.65], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
 
-function showLoader(){
-  loader.classList.remove('hide');
-  loader.setAttribute('aria-busy','true');
-  clearTimeout(loadTimer);
-  loadTimer = setTimeout(hideLoader, LOAD_TIMEOUT_MS);
-}
-function hideLoader(){
-  loader.classList.add('hide');
-  loader.setAttribute('aria-busy','false');
-  clearTimeout(loadTimer);
-}
-function cardHTML(c){
-  return `<div class="card">
-    <img class="logo-cli" src="${c.logo}" alt="${c.nombre}">
-    <h3>${c.nombre}</h3>
-    <button class="btn" data-cliente="${c.nombre}">Ver reporte</button>
-  </div>`;
-}
-function renderCards(list){
-  cards.innerHTML=CLIENTES.filter(c=>!list||list.includes(c.nombre)).map(cardHTML).join('');
-}
-function login(user,pass){
-  const u=(user||'').toLowerCase().trim();
-  if(!ACCOUNTS[u]||ACCOUNTS[u].pass!==pass)return false;
-  const acc=ACCOUNTS[u];
-  session={user:u,role:acc.role,cliente:acc.cliente||null};
-  who.textContent=acc.role==='admin'?'Administrador: acceso a todos los clientes':`Cliente: ${acc.cliente}`;
-  acc.role==='admin'?renderCards():renderCards([acc.cliente]);
-  loginBox.classList.add('hidden');home.classList.remove('hidden');panel.classList.add('hidden');
-  return true;
-}
-function openReport(nombre){
-  const item=CLIENTES.find(x=>x.nombre===nombre);
-  if(!item||!item.url){alert('Falta configurar enlace para '+nombre);return;}
-  crumb.textContent=nombre;
-  showLoader();
-  visor.src='about:blank';           // limpia antes por si había algo
-  // ocultar loader cuando el iframe termine de cargar
-  visor.onload = () => hideLoader();
-  visor.src=item.url;
-  home.classList.add('hidden');panel.classList.remove('hidden');
-}
-function logout(){
-  session=null;visor.src='';
-  Q('user').value='';Q('pass').value='';Q('msg').textContent='';
-  loginBox.classList.remove('hidden');home.classList.add('hidden');panel.classList.add('hidden');
-}
+  const markers = new Map();
+  function addOrMoveMarker(v){
+    let m = markers.get(v.id);
+    const popup = `
+      <b>${v.name}</b><br>
+      Estado: ${v.status}<br>
+      Velocidad: ${v.speed} kn<br>
+      Destino: ${v.destino}<br>
+      Lat: ${v.lat.toFixed(5)} · Lng: ${v.lng.toFixed(5)}
+    `;
+    if(!m){
+      m = L.marker([v.lat, v.lng], {icon: iconByStatus[v.status]}).addTo(map).bindPopup(popup);
+      markers.set(v.id, m);
+    }else{
+      m.setLatLng([v.lat, v.lng]).setIcon(iconByStatus[v.status]).setPopupContent(popup);
+    }
+  }
+  vessels.forEach(addOrMoveMarker);
 
-/* ========= EVENTOS ========= */
-Q('btnLogin').addEventListener('click',()=>{
-  const ok=login(Q('user').value,Q('pass').value);
-  if(!ok)Q('msg').textContent='Usuario o clave incorrectos';
-});
-Q('pass').addEventListener('keydown',e=>{if(e.key==='Enter')Q('btnLogin').click();});
-cards.addEventListener('click',e=>{
-  if(e.target.matches('button.btn'))openReport(e.target.getAttribute('data-cliente'));
-});
-Q('btnBack').addEventListener('click',()=>{
-  panel.classList.add('hidden');home.classList.remove('hidden');
-  visor.src=''; hideLoader();
-});
-Q('btnLogout').addEventListener('click',logout);
-Q('btnLogout2').addEventListener('click',logout);
+  // ================== SIDEBAR (tarjetas) ==================
+  const cardsWrap = document.getElementById('cards');
+  function statusBadge(s){
+    if(s==='MANIOBRA') return '<span class="badge b-green">En maniobra</span>';
+    if(s==='TRANSITO') return '<span class="badge b-yellow">En tránsito</span>';
+    return '<span class="badge b-red">Mantenimiento</span>';
+  }
+  function renderCards(list){
+    cardsWrap.innerHTML = '';
+    list.forEach(v=>{
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.innerHTML = `
+        <div>
+          <div class="title">${v.name}</div>
+          <div class="coords">Lat ${v.lat.toFixed(5)} · Long ${v.lng.toFixed(5)} · ${v.speed} kn</div>
+        </div>
+        <div class="right">
+          ${statusBadge(v.status)}
+          <button class="go-btn" data-id="${v.id}">Ir</button>
+        </div>
+      `;
+      cardsWrap.appendChild(el);
+    });
+  }
+  renderCards(vessels);
+
+  // Botón "Ir" centra el mapa
+  cardsWrap.addEventListener('click', e=>{
+    if(e.target.classList.contains('go-btn')){
+      const id = e.target.getAttribute('data-id');
+      const v = vessels.find(x=>x.id===id);
+      map.setView([v.lat, v.lng], 13, {animate:true});
+      markers.get(id).openPopup();
+    }
+  });
+
+  // ================== BÚSQUEDA Y FILTROS ==================
+  const searchBox = document.getElementById('searchBox');
+  const chips = [...document.querySelectorAll('.chip')];
+  let currentFilter = 'ALL';
+
+  function applyFilters(){
+    const term = searchBox.value.trim().toUpperCase();
+    const filtered = vessels.filter(v=>{
+      const byText = v.name.toUpperCase().includes(term);
+      const byState = currentFilter==='ALL' ? true : v.status===currentFilter;
+      return byText && byState;
+    });
+    renderCards(filtered);
+  }
+  searchBox.addEventListener('input', applyFilters);
+  chips.forEach(c=>c.addEventListener('click', ()=>{
+    chips.forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    currentFilter = c.getAttribute('data-filter');
+    applyFilters();
+  }));
+
+  // ================== RELOJ Y ACTUALIZACIÓN ==================
+  const clock = document.getElementById('clock');
+  const lastUpdate = document.getElementById('lastUpdate');
+  function pad(n){return n.toString().padStart(2,'0')}
+  function tick(){
+    const d = new Date();
+    clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  setInterval(tick, 1000); tick();
+
+  function refresh(){
+    // Demo: mueve un poco las posiciones de los que no están en Mantenimiento
+    vessels.forEach(v=>{
+      if(v.status!=='MANTO'){
+        v.lat += (Math.random()-0.5)*0.002;
+        v.lng += (Math.random()-0.5)*0.002;
+        v.speed = Math.max(0, (v.speed + (Math.random()-0.5)*1.5)).toFixed(1)*1;
+        addOrMoveMarker(v);
+      }
+    });
+    renderCards(vessels.filter(v=>{
+      // mantiene el filtro actual visible
+      return currentFilter==='ALL' ? true : v.status===currentFilter;
+    }));
+    const d = new Date();
+    lastUpdate.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  document.getElementById('refreshBtn').addEventListener('click', refresh);
+  refresh(); // set initial "última actualización"
 </script>
 </body>
 </html>
-
-
-<!-- 
-AGRIPAC pagename pageName=6a7b52b70b0a6993e626
-BIOMAR pageName=ReportSection485e79397267b5a2bde9
-VITAPRO pageName=9a780e54b50937e01420
-HAID pageName=d092dfce4cd74216d03b
-CARGILL pageName=1e58c2b7ec6d82100170
--->
