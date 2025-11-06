@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Portal de Reportes | Shipyard</title>
+<style>
+  :root{
+    --azul-osc:#0A2A4A; --azul:#0F3A6B; --azul-claro:#1E5AA8;
+    --naranja:#FF8C00; --gris:#f4f7fb; --borde:#e7eef7;
+    --glass:rgba(255,255,255,.72); --shadow:0 10px 30px rgba(7,26,46,.15);
+    --radius:18px;
+
+    --viewer-h:84svh;   /* altura visible del iframe */
+    --shield-h:160px;   /* alto del escudo que tapa la barra inferior */
+  }
+
+  @media (min-width:900px){
+    :root{ --viewer-h:80vh; --shield-h:140px; }
+  }
+  @media (max-width:620px){
+    :root{ --viewer-h:82svh; --shield-h:180px; }
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,Roboto,Arial;
+    background:var(--gris);
+    color:#16324b;
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+  }
+  img{max-width:100%;display:block}
+
+  /* Header */
+  .hero{
+    background:linear-gradient(135deg,var(--azul-osc) 0%,var(--azul) 60%,var(--azul-claro) 100%);
+    color:#fff;
+    padding:clamp(14px,2.5vw,22px) clamp(12px,2vw,18px) clamp(64px,8vw,90px);
+    box-shadow:var(--shadow);
+  }
+  .hero .wrap{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:clamp(8px,1.4vw,14px)}
+  .brand{display:flex;align-items:center;gap:clamp(8px,1.2vw,14px);font-weight:800}
+  .brand img{height:clamp(28px,4vw,38px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
+  .brand .title{font-size:clamp(1rem,2.4vw,1.35rem)}
+
+  /* Layout */
+  .container{max-width:1200px;margin:-48px auto 24px;padding:0 clamp(12px,3.5vw,16px)}
+  .login,.panel{
+    background:var(--glass);backdrop-filter:blur(8px);
+    border:1px solid var(--borde);border-radius:var(--radius);box-shadow:var(--shadow);
+  }
+
+  /* Login */
+  .login{padding:clamp(16px,2.8vw,24px);max-width:min(560px,92%)}
+  .login h3{text-align:center;margin-bottom:12px}
+  .row{display:flex;gap:clamp(8px,2vw,12px);flex-wrap:wrap;justify-content:center}
+  .row input{
+    padding:clamp(10px,2.4vw,12px);
+    border:1px solid var(--borde);border-radius:12px;min-width:220px;flex:1;
+  }
+  .btn{
+    background:var(--naranja);color:#fff;border:none;border-radius:12px;
+    padding:clamp(10px,2.4vw,12px) clamp(14px,3vw,18px);
+    font-weight:800;cursor:pointer;box-shadow:0 6px 14px rgba(255,140,0,.24)
+  }
+  .btn:hover{filter:brightness(1.05)}
+  .btn-sec{
+    background:#f2f6fc;border:1px solid var(--borde);color:#204261;border-radius:10px;
+    padding:8px 12px;cursor:pointer;font-weight:600
+  }
+  .error{color:#c0392b;margin-top:8px;text-align:center}
+  .badge{display:inline-block;background:#eaf3ff;border:1px solid #d7e7ff;color:#1f4e89;
+         padding:6px 10px;border-radius:999px;font-size:.9rem}
+
+  /* Cards */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
+    gap:10px;margin-bottom:16px;position:sticky;top:0;z-index:5;
+    background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border-radius:12px;padding:8px;
+  }
+  .grid{display:grid;gap:clamp(12px,2.4vw,18px);grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{
+    background:var(--glass);border:1px solid var(--borde);border-radius:var(--radius);
+    text-align:center;padding:clamp(14px,3vw,18px);box-shadow:var(--shadow);
+    transition:transform .18s ease,box-shadow .18s ease;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(7,26,46,.18)}
+  .logo-cli{height:clamp(42px,7vw,58px);margin:6px auto 2px;object-fit:contain}
+  .card h3{margin:4px 0 8px;color:#002b5c}
+  
+  /* Viewer */
+  .panel{overflow:hidden}
+  .viewer{
+    position:relative;
+    overflow:hidden;
+    height:var(--viewer-h);
+    border-top:1px solid var(--borde);
+  }
+  .viewer iframe{
+    position:absolute;
+    left:0; top:0;
+    width:100%;
+    height:var(--viewer-h);
+    border:0;
+  }
+
+  /* Loader overlay */
+  .loader{
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.95));
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; z-index:2; transition:opacity .25s ease;
+  }
+  .loader.hide{opacity:0; pointer-events:none}
+  .spinner{
+    width:42px; height:42px; border-radius:50%;
+    border:4px solid #dfe9f7; border-top-color:var(--azul-claro);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader p{font-weight:700; color:#1f3b5c}
+
+  /* Escudo inferior que tapa y bloquea el paginador */
+  .viewer .shield{
+    position:absolute; left:0; right:0; bottom:0;
+    height:var(--shield-h);
+    background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 60%);
+    pointer-events:auto;
+  }
+  .viewer::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-1px; height:18px;
+    background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.9) 60%, #fff);
+    pointer-events:none;
+  }
+
+  .hidden{display:none}
+  footer{text-align:center;font-size:.85rem;opacity:.7;padding:22px 16px}
+
+  @media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:620px){
+    .grid{grid-template-columns:1fr}
+    .btn,.btn-sec{width:100%}
+    .row input{min-width:unset}
+  }
+</style>
+</head>
+<body>
+
+  <!-- Header -->
+  <section class="hero">
+    <div class="wrap brand">
+      <img src="https://citikold.com/wp-content/uploads/2025/03/Grupo-893.svg" alt="Shipyard Logo">
+      <span class="title">Portal de Reportes | Shipyard</span>
+    </div>
+  </section>
+
+  <!-- Login -->
+  <section id="loginBox" class="login container">
+    <h3>Acceso</h3>
+    <div class="row">
+      <input id="user" type="text" placeholder="Usuario (admin / agripac / biomar / vitapro / haid / cargill)" />
+      <input id="pass" type="password" placeholder="Clave" />
+      <button class="btn" id="btnLogin">Ingresar</button>
+    </div>
+    <div id="msg" class="error"></div>
+    <div style="text-align:center;margin-top:10px">
+      <span class="badge">Admin ve todos los clientes · Cada cliente ve solo su reporte</span>
+    </div>
+  </section>
+
+  <!-- Home -->
+  <section id="home" class="container hidden">
+    <div class="topbar">
+      <span class="badge" id="who"></span>
+      <button class="btn-sec" id="btnLogout">Cerrar sesión</button>
+    </div>
+    <div id="cards" class="grid"></div>
+  </section>
+
+  <!-- Viewer -->
+  <section id="panelReporte" class="container hidden">
+    <div class="topbar">
+      <span class="badge" id="crumbCliente">Cliente</span>
+      <div class="row" style="gap:8px">
+        <button class="btn-sec" id="btnBack">← Regresar</button>
+        <button class="btn-sec" id="btnLogout2">Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="viewer">
+        <iframe id="visor" title="Reporte Shipyard" allowfullscreen></iframe>
+        <!-- Loader overlay -->
+        <div id="loader" class="loader" aria-live="polite" aria-busy="true">
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Cargando reporte…</p>
+        </div>
+        <!-- Escudo inferior -->
+        <div class="shield" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>© Shipyard — Portal de Reportes. Control de acceso.</footer>
+
+<script>
+/* ========= ACCESOS ========= */
+const ACCOUNTS = {
+  admin:{role:"admin",pass:"ShipAdmin2025!"},
+  agripac:{role:"cliente",cliente:"AGRIPAC",pass:"Agri2025"},
+  biomar:{role:"cliente",cliente:"BIOMAR",pass:"Bio2025!"},
+  vitapro:{role:"cliente",cliente:"VITAPRO",pass:"Vita2025!"},
+  haid:{role:"cliente",cliente:"HAID",pass:"Haid2025!"},
+  cargill:{role:"cliente",cliente:"CARGILL",pass:"Carg2025!"}
+};
+
+/* ========= CLIENTES ========= */
+const BASE_R = "eyJrIjoiMzZhNmUwOGEtNjlkMi00OTBmLTk0ODYtNDI4OTQ5Mzk5NmFmIiwidCI6IjI1MGY3NmU3LTYxMDUtNDJlMy04MmQwLWJlN2M0NjBhZWE1OSIsImMiOjR9";
+const CLIENTES = [
+  {
+    nombre:"AGRIPAC",
+    logo:"https://yt3.googleusercontent.com/ytc/AIdro_k1f-dWXIHdp3F1bdshgT7u2jjF0DNjpBpDGebTmEy4GA=s900-c-k-c0x00ffffff-no-rj",
+    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=6a7b52b70b0a6993e626&navContentPaneEnabled=false&filterPaneEnabled=false`
+  },
+  {
+    nombre:"BIOMAR",
+    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFHVBJaofNxu0LmMd72BsW5xvyU8_yt6rVwg&s",
+    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=ReportSection485e79397267b5a2bde9&navContentPaneEnabled=false&filterPaneEnabled=false`
+  },
+  {
+    nombre:"VITAPRO",
+    logo:"https://vitapro.com.pe/wp-content/uploads/2020/08/vitapro-logo-2014.jpg",
+    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=9a780e54b50937e01420&navContentPaneEnabled=false&filterPaneEnabled=false`
+  },
+  {
+    nombre:"HAID",
+    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQt6hZ99pUe2HFaIcMJ_TENDO4sfpMLZyyd6Q&s",
+    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=d092dfce4cd74216d03b&navContentPaneEnabled=false&filterPaneEnabled=false`
+  },
+  {
+    nombre:"CARGILL",
+    logo:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThwcnOgCuwcAwNB7jeuuTxfYxUcqtQcyk76A&s",
+    url:`https://app.powerbi.com/view?r=${BASE_R}&pageName=1e58c2b7ec6d82100170&navContentPaneEnabled=false&filterPaneEnabled=false`
+  },
+];
+
+/* ========= LÓGICA ========= */
+const Q=id=>document.getElementById(id);
+const loginBox=Q('loginBox'),home=Q('home'),panel=Q('panelReporte');
+const cards=Q('cards'),visor=Q('visor'),who=Q('who'),crumb=Q('crumbCliente');
+const loader=Q('loader');
+let session=null, loadTimer=null;
+const LOAD_TIMEOUT_MS = 15000; // respaldo: oculta loader a los 15s
+
+function showLoader(){
+  loader.classList.remove('hide');
+  loader.setAttribute('aria-busy','true');
+  clearTimeout(loadTimer);
+  loadTimer = setTimeout(hideLoader, LOAD_TIMEOUT_MS);
+}
+function hideLoader(){
+  loader.classList.add('hide');
+  loader.setAttribute('aria-busy','false');
+  clearTimeout(loadTimer);
+}
+function cardHTML(c){
+  return `<div class="card">
+    <img class="logo-cli" src="${c.logo}" alt="${c.nombre}">
+    <h3>${c.nombre}</h3>
+    <button class="btn" data-cliente="${c.nombre}">Ver reporte</button>
+  </div>`;
+}
+function renderCards(list){
+  cards.innerHTML=CLIENTES.filter(c=>!list||list.includes(c.nombre)).map(cardHTML).join('');
+}
+function login(user,pass){
+  const u=(user||'').toLowerCase().trim();
+  if(!ACCOUNTS[u]||ACCOUNTS[u].pass!==pass)return false;
+  const acc=ACCOUNTS[u];
+  session={user:u,role:acc.role,cliente:acc.cliente||null};
+  who.textContent=acc.role==='admin'?'Administrador: acceso a todos los clientes':`Cliente: ${acc.cliente}`;
+  acc.role==='admin'?renderCards():renderCards([acc.cliente]);
+  loginBox.classList.add('hidden');home.classList.remove('hidden');panel.classList.add('hidden');
+  return true;
+}
+function openReport(nombre){
+  const item=CLIENTES.find(x=>x.nombre===nombre);
+  if(!item||!item.url){alert('Falta configurar enlace para '+nombre);return;}
+  crumb.textContent=nombre;
+  showLoader();
+  visor.src='about:blank';           // limpia antes por si había algo
+  // ocultar loader cuando el iframe termine de cargar
+  visor.onload = () => hideLoader();
+  visor.src=item.url;
+  home.classList.add('hidden');panel.classList.remove('hidden');
+}
+function logout(){
+  session=null;visor.src='';
+  Q('user').value='';Q('pass').value='';Q('msg').textContent='';
+  loginBox.classList.remove('hidden');home.classList.add('hidden');panel.classList.add('hidden');
+}
+
+/* ========= EVENTOS ========= */
+Q('btnLogin').addEventListener('click',()=>{
+  const ok=login(Q('user').value,Q('pass').value);
+  if(!ok)Q('msg').textContent='Usuario o clave incorrectos';
+});
+Q('pass').addEventListener('keydown',e=>{if(e.key==='Enter')Q('btnLogin').click();});
+cards.addEventListener('click',e=>{
+  if(e.target.matches('button.btn'))openReport(e.target.getAttribute('data-cliente'));
+});
+Q('btnBack').addEventListener('click',()=>{
+  panel.classList.add('hidden');home.classList.remove('hidden');
+  visor.src=''; hideLoader();
+});
+Q('btnLogout').addEventListener('click',logout);
+Q('btnLogout2').addEventListener('click',logout);
+</script>
+</body>
+</html>
+
+
+<!-- 
+AGRIPAC pagename pageName=6a7b52b70b0a6993e626
+BIOMAR pageName=ReportSection485e79397267b5a2bde9
+VITAPRO pageName=9a780e54b50937e01420
+HAID pageName=d092dfce4cd74216d03b
+CARGILL pageName=1e58c2b7ec6d82100170
+-->
